@@ -1,0 +1,30 @@
+8085 program to find the factorial of a number
+
+
+
+code:
+2000H	Data		                  Data Byte
+2001H	Result		            Result of factorial
+2002H		LXI H, 2000H	      Load data from memory
+2005H		MOV B, M	            Load data to B register
+2006H		MVI D, 01H	            Set D register with 1
+2008H	FACTORIAL	CALL MULTIPLY	Subroutine call for multiplication
+200BH		DCR B	                  Decrement B
+200CH		JNZ FACTORIAL	      Call factorial till B becomes 0
+200FH		INX H	                  Increment memory
+2010H		MOV M, D	            Store result in memory
+2011H		HLT	                  Halt
+2100H	MULTIPLY	MOV E, B	      Transfer contents of B to C
+2101H		MVI A, 00H	            Clear accumulator to store result
+2103H	MULTIPLYLOOP	ADD D	      Add contents of D to A
+2104H		DCR E	                  Decrement E
+2105H		JNZ MULTIPLYLOOP	      Repeated addition
+2108H		MOV D, A	Transfer contents of A to D
+2109H		RET	Return from subroutine
+Explanation –
+
+First set register B with data.
+Set register D with data by calling MULTIPLY subroutine one time.
+Decrement B and add D to itself B times by calling MULTIPLY subroutine as 4*3 is equivalent to 4+4+4 (i.e., 3 times).
+Repeat the above step till B reaches 0 and then exit the program.
+The result is obtained in D register which is stored in memory

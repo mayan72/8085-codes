@@ -1,0 +1,28 @@
+8085 program to add two 16 bit numbers
+
+LDA 2050	A ← 2050
+MOV B, A	B ← A
+LDA 2052	A ← 2052
+ADD B	A ← A+B
+STA 3050	A → 3050
+LDA 2051	A ← 2051
+MOV B, A	B ← A
+LDA 2053	A ← 2053
+ADC B	A ← A+B+CY
+STA 3051	A → 3051
+HLT	Stops execution
+
+
+Explanation:
+
+LDA 2050 stores the value at 2050 in A (accumulator).
+MOV B, A stores the value of A into the B register.
+LDA 2052 stores the value at 2052 in A.
+ADD B add the contents of B and A and store them in A.
+STA 3050 stores the result in memory location 3050.
+LDA 2051 stores the value at 2051 in A.
+MOV B, A stores the value of A into the B register.
+LDA 2053 stores the value at 2053 in A.
+ADC B adds the contents of B, A, and carry from the lower bit addition and store in A.
+STA 3051 stores the result in memory location 3051.
+HLT stops execution.

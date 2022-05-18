@@ -1,0 +1,54 @@
+1's , 2's complement of 8 bit number 
+
+
+Code:
+
+1'S COMPLEMENT
+
+LDA C050H
+CMA
+STA C051H
+HLT
+
+2'S COMPLEMENT 
+
+LDA C050H
+CMA
+INR A
+STA C051H
+HLT
+
+
+
+1's , 2's complement of 16 bit number 
+
+1'S COMPLEMENT 
+
+LXI H C050H
+MOV A M 
+CMA 
+STA CO52H
+INX H
+MOV A M 
+STA C053H
+HLT
+
+
+2'COMPLEMENT
+
+
+LXI H C050H
+MVI B 00H
+MOV A M 
+CMA
+ADI 01H
+STA C052H
+JNC LOOP
+INR B 
+LOOP LXI H C051H
+MOV A M 
+CMA 
+ADD B
+STA C053H
+HLT
+

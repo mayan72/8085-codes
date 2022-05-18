@@ -1,0 +1,24 @@
+8085 program to multiply two 8 bit numbers using logical instructions
+
+
+
+code:
+MVI B 05	B <- 05
+MVI C 04	C <- 04
+MOV A, B	A <- B
+RLC	rotate the content of A without carry
+RLC	rotate the content of A without carry
+STA 3050	3050 <- A
+HLT	End of the program
+
+
+
+Explanation –
+
+MVI B 05: assign the value 05 to B register.
+MVI C 04: assign the value 04 to C register.
+MOV A, B: move the content of register B to register A.
+RLC: rotate the content of accumulator left without carry.
+RLC: rotate the content of accumulator left without carry.
+STA 3050: store the content of register A at memory location 3050
+HLT: stops the execution of the program.

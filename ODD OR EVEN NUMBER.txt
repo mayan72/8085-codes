@@ -1,0 +1,11 @@
+To find weather the number is odd or even 
+
+LDA C050H
+RAR
+JC LOOP
+MVI A 00H
+STA C055H
+HLT
+LOOP MVI A 01H
+STA C055H
+HLT

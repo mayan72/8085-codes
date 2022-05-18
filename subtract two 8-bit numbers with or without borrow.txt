@@ -1,0 +1,26 @@
+8085 program to subtract two 8-bit numbers with or without borrow
+
+
+MVI	C, 00	[C] <- 00
+LHLD	2500	[H-L] <- [2500]
+MOV	A, H	[A] <- [H]
+SUB	L	[A] <- [A] – [L]
+JNC	200B	Jump If no borrow
+INR	C	[C] <- [C] + 1
+STA	2502	[A] -> [2502], Result
+MOV	A, C	[A] <- [C]
+STA	2503	[A] -> [2503], Borrow
+HLT		Stop
+
+
+
+Explanation – Registers A, H, L, C are used for general purpose:
+
+MOV is used to transfer the data from memory to accumulator (1 Byte)
+LHLD is used to load register pair directly using 16-bit address (3 Byte instruction)
+MVI is used to move data immediately into any of registers (2 Byte)
+STA is used to store the content of accumulator into memory(3 Byte instruction)
+INR is used to increase register by 1 (1 Byte instruction)
+JNC is used to jump if no borrow (3 Byte instruction)
+SUB is used to subtract two numbers where one number is in accumulator(1 Byte)
+HLT is used to halt the program

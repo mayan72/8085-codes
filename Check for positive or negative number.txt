@@ -1,0 +1,13 @@
+Wearher a number is positive or negative 
+
+
+LXI H C050H
+MOV A M 
+RAL 
+JC LOOP 
+MVI A 00H
+STA C053H
+HLT
+LOOP MVI A 01H
+STA C053H
+HLT
