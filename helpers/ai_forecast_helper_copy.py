@@ -1,3 +1,4 @@
+import inspect
 from datetime import datetime
 from html import escape
 
@@ -200,14 +201,10 @@ def create_openai_response(
 
     if not client:
         ai_forecast_logger.error("[OPENAI] Client not initialized | call=%s", call_name)
-        if not MAIL_SENT:
-            send_ai_failure_mail(
-                error_msg=f"OpenAI client initialization failed ({call_name})",
-                client_id=OPENAI_CLIENT_ID,
-                project_id_openai=OPENAI_PROJECT_ID,
-                key_tracking_id_openai=OPENAI_KEY_TRACKING_ID,
-            )
-            MAIL_SENT = True
+        _notify_ai_failure(
+            error_msg=f"OpenAI client initialization failed ({call_name})",
+            request_id=None,
+        )
         return None
 
     try:
@@ -266,18 +263,13 @@ def create_openai_response(
                 status,
                 incomplete_reason or "unknown",
             )
-            if not MAIL_SENT:
-                send_ai_failure_mail(
-                    error_msg=(
-                        f"OpenAI response incomplete ({call_name}): "
-                        f"status={status} reason={incomplete_reason or 'unknown'}"
-                    ),
-                    client_id=OPENAI_CLIENT_ID,
-                    project_id_openai=OPENAI_PROJECT_ID,
-                    key_tracking_id_openai=OPENAI_KEY_TRACKING_ID,
-                    request_id=response_id,
-                )
-                MAIL_SENT = True
+            _notify_ai_failure(
+                error_msg=(
+                    f"OpenAI response incomplete ({call_name}): "
+                    f"status={status} reason={incomplete_reason or 'unknown'}"
+                ),
+                request_id=response_id,
+            )
             return None
 
         output_text = getattr(response, "output_text", None)
@@ -285,15 +277,10 @@ def create_openai_response(
             ai_forecast_logger.error(
                 "[OPENAI EMPTY OUTPUT] call=%s id=%s", call_name, response_id
             )
-            if not MAIL_SENT:
-                send_ai_failure_mail(
-                    error_msg=f"OpenAI returned empty output ({call_name})",
-                    client_id=OPENAI_CLIENT_ID,
-                    project_id_openai=OPENAI_PROJECT_ID,
-                    key_tracking_id_openai=OPENAI_KEY_TRACKING_ID,
-                    request_id=response_id,
-                )
-                MAIL_SENT = True
+            _notify_ai_failure(
+                error_msg=f"OpenAI returned empty output ({call_name})",
+                request_id=response_id,
+            )
             return None
 
         return response
@@ -303,16 +290,75 @@ def create_openai_response(
             "[OPENAI RESPONSE ERROR] call=%s error=%s", call_name, exc
         )
 
-        if not MAIL_SENT:
-            send_ai_failure_mail(
-                error_msg=f"OpenAI response failed ({call_name}): {exc}",
-                client_id=OPENAI_CLIENT_ID,
-                project_id_openai=OPENAI_PROJECT_ID,
-                key_tracking_id_openai=OPENAI_KEY_TRACKING_ID,
-            )
-            MAIL_SENT = True
+        _notify_ai_failure(
+            error_msg=f"OpenAI response failed ({call_name}): {exc}",
+            request_id=None,
+        )
 
         return None
+
+
+def _notify_ai_failure(*, error_msg, request_id=None):
+    """Send one Amplifi Pro failure mail per job, and retry if the first send failed."""
+    global MAIL_SENT
+    if MAIL_SENT:
+        return
+    response = send_ai_failure_mail(
+        error_msg=error_msg,
+        client_id=OPENAI_CLIENT_ID,
+        project_id_openai=OPENAI_PROJECT_ID,
+        key_tracking_id_openai=OPENAI_KEY_TRACKING_ID,
+        request_id=request_id,
+    )
+    if response is not None and getattr(response, "ok", False):
+        MAIL_SENT = True
+
+
+def _kwargs_for_callable(func, values):
+    """Pass only parameters the target function accepts, filling required Amplifi fields."""
+    params = inspect.signature(func).parameters
+    if any(param.kind == inspect.Parameter.VAR_KEYWORD for param in params.values()):
+        return dict(values)
+
+    kwargs = {name: values[name] for name in params if name in values}
+    timestamp = values.get("header_date") or values.get("timestamp") or ""
+    for name, param in params.items():
+        if name in kwargs:
+            continue
+        if param.kind in (
+            inspect.Parameter.VAR_POSITIONAL,
+            inspect.Parameter.VAR_KEYWORD,
+        ):
+            continue
+        if param.default is not inspect.Parameter.empty:
+            continue
+        if name in {"header_date", "timestamp"}:
+            kwargs[name] = timestamp
+        else:
+            kwargs[name] = values.get(name, "N/A")
+    return kwargs
+
+
+def _render_failure_email_html(template_kwargs):
+    try:
+        from apps.common_dashboard_agent.utility.openai_key_loader import (
+            _build_email_html,
+        )
+
+        body = _build_email_html(
+            **_kwargs_for_callable(_build_email_html, template_kwargs)
+        )
+        if body:
+            return body
+    except Exception as template_error:
+        ai_forecast_logger.warning(
+            "[AI_MAIL_TEMPLATE_FALLBACK] Amplifi Pro helper unavailable (%s); using local template",
+            template_error,
+        )
+
+    return build_amplifi_pro_failure_email_html(
+        **_kwargs_for_callable(build_amplifi_pro_failure_email_html, template_kwargs)
+    )
 
 
 def _row(label, value):
@@ -417,6 +463,7 @@ def send_ai_failure_mail(
         }
 
         subject = "Amplifi Pro | AI Forecast OpenAI failure notification"
+        now_stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         template_kwargs = {
             "client_id": client_id or "N/A",
             "client_name": getattr(settings, "AI_FORECAST_CLIENT_NAME", "AI Forecast"),
@@ -429,24 +476,11 @@ def send_ai_failure_mail(
             "request_id": request_id or "N/A",
             "environment": getattr(settings, "MODE", "N/A"),
             "fallback_status": "Failed",
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "timestamp": now_stamp,
+            "header_date": now_stamp,
         }
 
-        body = None
-        try:
-            from apps.common_dashboard_agent.utility.openai_key_loader import (
-                _build_email_html,
-            )
-
-            body = _build_email_html(**template_kwargs)
-        except Exception as template_error:
-            ai_forecast_logger.warning(
-                "[AI_MAIL_TEMPLATE_FALLBACK] Amplifi Pro helper unavailable (%s); using local template",
-                template_error,
-            )
-
-        if not body:
-            body = build_amplifi_pro_failure_email_html(**template_kwargs)
+        body = _render_failure_email_html(template_kwargs)
 
         payload = {
             "FromMail": getattr(settings, "AI_FORECAST_FROM_EMAIL", "amplifipro@thesmartcube.com"),
