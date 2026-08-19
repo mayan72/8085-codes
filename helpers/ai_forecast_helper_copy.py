@@ -339,43 +339,14 @@ def _kwargs_for_callable(func, values):
     return kwargs
 
 
-def _render_failure_email_html(template_kwargs):
-    try:
-        from apps.common_dashboard_agent.utility.openai_key_loader import (
-            _build_email_html,
-        )
-
-        body = _build_email_html(
-            **_kwargs_for_callable(_build_email_html, template_kwargs)
-        )
-        if body:
-            return body
-    except Exception as template_error:
-        ai_forecast_logger.warning(
-            "[AI_MAIL_TEMPLATE_FALLBACK] Amplifi Pro helper unavailable (%s); using local template",
-            template_error,
-        )
-
-    return build_amplifi_pro_failure_email_html(
-        **_kwargs_for_callable(build_amplifi_pro_failure_email_html, template_kwargs)
-    )
+WEBSITE_DISPLAY_TEXT = (
+    "www.wnsprocurement"
+    "&#8203;"
+    ".com"
+)
 
 
-def _row(label, value):
-    return (
-        "<tr>"
-        f'<td style="padding:8px 12px;border:1px solid #d9e2ec;background:#f7fafc;'
-        f'font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#334e68;width:220px;">'
-        f"<strong>{escape(str(label))}</strong></td>"
-        f'<td style="padding:8px 12px;border:1px solid #d9e2ec;'
-        f'font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#102a43;">'
-        f"{escape(str(value))}</td>"
-        "</tr>"
-    )
-
-
-def build_amplifi_pro_failure_email_html(
-    *,
+def _build_email_html(
     client_id,
     client_name,
     intelligence_type_id,
@@ -385,63 +356,209 @@ def build_amplifi_pro_failure_email_html(
     request_id,
     environment,
     fallback_status,
+    header_date,
     timestamp,
 ):
-    """Amplifi Pro OpenAI-key failure notification layout."""
-    return f"""<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Amplifi Pro notification</title>
-  </head>
-  <body style="margin:0;padding:0;background:#eef2f6;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f6;padding:24px 0;">
-      <tr>
-        <td align="center">
-          <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #d9e2ec;">
-            <tr>
-              <td style="background:#0b3d91;padding:16px 24px;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:bold;color:#ffffff;">
-                Amplifi Pro
-              </td>
+    """
+    AmplifiPRO standard OpenAI-key failure email (Story 75173 / Category Insight layout).
+    The website line is plain text so Cisco Secure Email cannot wrap it into
+    secure-web.cisco.com. API keys are never included.
+    """
+    status_color_map = {
+        "Success": "#28a745",
+        "Failed": "#dc3545",
+        "Not Applicable": "#6c757d",
+    }
+    status_color = status_color_map.get(fallback_status, "#6c757d")
+
+    client_id = escape(str(client_id))
+    client_name = escape(str(client_name or "N/A"))
+    intelligence_type_id = escape(str(intelligence_type_id))
+    project_id_openai = escape(str(project_id_openai))
+    key_tracking_id_openai = escape(str(key_tracking_id_openai))
+    failure_reason = escape(str(failure_reason))
+    request_id = escape(str(request_id))
+    environment = escape(str(environment))
+    fallback_status = escape(str(fallback_status))
+    header_date = escape(str(header_date))
+    timestamp = escape(str(timestamp))
+
+    return f"""
+    <table width="620" border="0" cellpadding="0" cellspacing="0" align="center">
+        <tbody>
+            <tr style="background-color:#fff;">
+                <td colspan="3">
+                    <img src="https://dhtfm98jq31zo.cloudfront.net/AmplifiPro_UAT/Web/V2/Logo/email-header-new1.jpg"
+                        width="620" height="200" alt="AmplifiPRO">
+                </td>
             </tr>
             <tr>
-              <td style="padding:20px 24px 8px 24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#102a43;">
-                OpenAI Key Failure Notification
-              </td>
+                <td colspan="3" style="padding:15px 0;">
+                    <p style="font-size:20px; color:#9abac4; margin:0;
+                              font-family:Arial,Helvetica,sans-serif;">
+                        <strong>Client OpenAI key failure notification</strong>
+                    </p>
+                </td>
             </tr>
             <tr>
-              <td style="padding:0 24px 16px 24px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#486581;">
-                An OpenAI request for AI Forecast failed. Details are below.
-              </td>
+                <td style="font-family:Arial,Helvetica,sans-serif; font-size:14px;">
+                    Hi Team,
+                </td>
+                <td width="50%" align="right" style="font-family:Arial,Helvetica,sans-serif; font-size:14px;">
+                    {header_date}
+                </td>
+            </tr>
+            <tr><td style="text-align:left; vertical-align:top;" colspan="3">&nbsp;</td></tr>
+            <tr>
+                <td colspan="3" style="padding:15px 0; font-family:Arial,Helvetica,sans-serif; font-size:14px;">
+                        Request execution failed due to an issue with the OpenAI key
+                        mapping/configuration. Please review the details below and
+                        take necessary action.
+                        <br><br>
+                        <table width="100%" border="0" cellpadding="8" cellspacing="0"
+                               style="border-collapse:collapse;
+                                      font-family:Arial,Helvetica,sans-serif;
+                                      font-size:13px;">
+                            <thead>
+                                <tr style="background-color:#9abac4; color:#ffffff;">
+                                    <th align="left"
+                                        style="padding:10px; border:1px solid #ddd; width:45%;">
+                                        Field
+                                    </th>
+                                    <th align="left"
+                                        style="padding:10px; border:1px solid #ddd; width:55%;">
+                                        Value
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="background-color:#f9f9f9;">
+                                    <td style="padding:8px; border:1px solid #ddd;"><strong>Client ID</strong></td>
+                                    <td style="padding:8px; border:1px solid #ddd;">{client_id}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px; border:1px solid #ddd;"><strong>Client Name</strong></td>
+                                    <td style="padding:8px; border:1px solid #ddd;">{client_name}</td>
+                                </tr>
+                                <tr style="background-color:#f9f9f9;">
+                                    <td style="padding:8px; border:1px solid #ddd;"><strong>Execution Type</strong></td>
+                                    <td style="padding:8px; border:1px solid #ddd;">{intelligence_type_id}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px; border:1px solid #ddd;"><strong>OpenAI Project ID</strong></td>
+                                    <td style="padding:8px; border:1px solid #ddd;">{project_id_openai}</td>
+                                </tr>
+                                <tr style="background-color:#f9f9f9;">
+                                    <td style="padding:8px; border:1px solid #ddd;"><strong>Key Tracking ID</strong></td>
+                                    <td style="padding:8px; border:1px solid #ddd;">{key_tracking_id_openai}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px; border:1px solid #ddd;"><strong>Failure Reason</strong></td>
+                                    <td style="padding:8px; border:1px solid #ddd; color:#dc3545;">
+                                        {failure_reason}
+                                    </td>
+                                </tr>
+                                <tr style="background-color:#f9f9f9;">
+                                    <td style="padding:8px; border:1px solid #ddd;"><strong>Request ID / Correlation ID</strong></td>
+                                    <td style="padding:8px; border:1px solid #ddd;">{request_id}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px; border:1px solid #ddd;"><strong>Environment</strong></td>
+                                    <td style="padding:8px; border:1px solid #ddd;">{environment}</td>
+                                </tr>
+                                <tr style="background-color:#f9f9f9;">
+                                    <td style="padding:8px; border:1px solid #ddd;"><strong>Timestamp</strong></td>
+                                    <td style="padding:8px; border:1px solid #ddd;">{timestamp}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px; border:1px solid #ddd;"><strong>Default Key Fallback Status</strong></td>
+                                    <td style="padding:8px; border:1px solid #ddd;">
+                                        <span style="background-color:{status_color};
+                                                     color:#ffffff;
+                                                     padding:3px 10px;
+                                                     border-radius:4px;
+                                                     font-size:12px;">
+                                            {fallback_status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <br><br>
+                        Thanks,
+                        <br><br>
+                        <img src="https://assets-publicbucket.s3-eu-west-1.amazonaws.com/AmplifiPro/Web/V1/mail/Amplifi-PRO-LogoNew.png"
+                            width="80" alt="AmplifiPRO">
+                        <br><br>
+                        <span style="color:#00af9b;
+                            font-family:Arial,Helvetica,sans-serif;
+                            font-size:14px;
+                            text-decoration:none;">
+                            {WEBSITE_DISPLAY_TEXT}
+                        </span>
+                </td>
+            </tr>
+            <tr><td colspan="3">&nbsp;</td></tr>
+            <tr>
+                <td align="left" colspan="3">
+                    <a href="https://linkedin.com/company/amplifipro" target="_blank"
+                       style="text-decoration:none;">
+                        <img width="22" height="22" style="width:22px; height:22px;"
+                             src="https://dhtfm98jq31zo.cloudfront.net/AmplifiPro/Web/V1/mail/in.png"
+                             alt="LinkedIn">
+                    </a>
+                    &nbsp;&nbsp;
+                    <a href="https://twitter.com/amplifipro" target="_blank"
+                       style="text-decoration:none;">
+                        <img width="22" height="22" style="width:22px; height:22px;"
+                             src="https://dhtfm98jq31zo.cloudfront.net/AmplifiPro/Web/V1/mail/twitterX1.png"
+                             alt="X (Twitter)">
+                    </a>
+                    &nbsp;&nbsp;
+                    <a href="https://instagram.com/amplifipro" target="_blank"
+                       style="text-decoration:none;">
+                        <img width="22" height="22" style="width:22px; height:22px;"
+                             src="https://dhtfm98jq31zo.cloudfront.net/AmplifiPro/Web/V1/mail/instagram1.png"
+                             alt="Instagram">
+                    </a>
+                    &nbsp;&nbsp;
+                    <a href="https://youtube.com/@amplifipro" target="_blank"
+                       style="text-decoration:none;">
+                        <img width="22" height="22" style="width:22px; height:22px;"
+                             src="https://dhtfm98jq31zo.cloudfront.net/AmplifiPro/Web/V1/mail/youtube1.png"
+                             alt="YouTube">
+                    </a>
+                    <br><br>
+                    <span style="margin:0 auto; border-top:2px solid #9abac4; display:block;"></span>
+                </td>
             </tr>
             <tr>
-              <td style="padding:0 24px 24px 24px;">
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-                  {_row("Client ID", client_id)}
-                  {_row("Client Name", client_name)}
-                  {_row("Intelligence Type ID", intelligence_type_id)}
-                  {_row("Project ID (OpenAI)", project_id_openai)}
-                  {_row("Key Tracking ID (OpenAI)", key_tracking_id_openai)}
-                  {_row("Failure Reason", failure_reason)}
-                  {_row("Request ID", request_id)}
-                  {_row("Environment", environment)}
-                  {_row("Fallback Status", fallback_status)}
-                  {_row("Timestamp", timestamp)}
-                </table>
-              </td>
+                <td style="margin:0; padding:0;
+                           font-family:Arial,Corbel,Helvetica,sans-serif;
+                           color:#666; font-size:10px; padding-right:10px;"
+                    colspan="3">
+                    <p style="text-decoration:none; font-weight:bold; color:#002035;
+                               font-size:14px; padding-top:10px; padding-bottom:5px;
+                               font-family:Arial,Corbel,sans-serif;">
+                        Disclaimer
+                    </p>
+                    This is a system-generated email; please do not reply.<br>
+                    This e-mail may contain confidential and/or legally privileged information.
+                    If you are not the intended recipient (or have received this message in error)
+                    please notify the sender immediately and delete this e-mail. Any unauthorised
+                    copying, disclosure, distribution, or any action taken or omitted to be taken
+                    in reliance on the material in this email is strictly forbidden and may be unlawful.
+                </td>
             </tr>
-            <tr>
-              <td style="background:#f7fafc;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#829ab1;border-top:1px solid #d9e2ec;">
-                This is an automated Amplifi Pro notification. Please do not reply.
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
+            <tr><td colspan="3">&nbsp;</td></tr>
+            <tr><td colspan="3">&nbsp;</td></tr>
+        </tbody>
     </table>
-  </body>
-</html>
-"""
+    """
+
+
+def _render_failure_email_html(template_kwargs):
+    return _build_email_html(**_kwargs_for_callable(_build_email_html, template_kwargs))
 
 
 def send_ai_failure_mail(
@@ -463,6 +580,7 @@ def send_ai_failure_mail(
         }
 
         subject = "Amplifi Pro | AI Forecast OpenAI failure notification"
+        now_date = datetime.now().strftime("%Y-%m-%d")
         now_stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         template_kwargs = {
             "client_id": client_id or "N/A",
@@ -476,8 +594,8 @@ def send_ai_failure_mail(
             "request_id": request_id or "N/A",
             "environment": getattr(settings, "MODE", "N/A"),
             "fallback_status": "Failed",
+            "header_date": now_date,
             "timestamp": now_stamp,
-            "header_date": now_stamp,
         }
 
         body = _render_failure_email_html(template_kwargs)
@@ -496,7 +614,7 @@ def send_ai_failure_mail(
             url=url,
             headers=headers,
             data=payload,
-            verify=bool(getattr(settings, "AI_FORECAST_MAIL_VERIFY_SSL", True)),
+            verify=bool(getattr(settings, "AI_FORECAST_MAIL_VERIFY_SSL", False)),
             timeout=30,
         )
         ai_forecast_logger.info("[AI_MAIL] Status: %s", response.status_code)
