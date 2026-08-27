@@ -17,6 +17,7 @@ from helpers.ai_forecast_helper_copy import (
     create_openai_response,
     get_openai_client,
 )
+from helpers.ai_forecast_calc import assemble_forecast_output
 from helpers.config import (
     base_forecast_logger as logger,
     category_new_api_end_point,
@@ -571,7 +572,9 @@ def ai_forecast_output():
                     )
                     continue
 
-                prompt_one_output = _parse_json_object(response.output_text)
+                prompt_one_output = assemble_forecast_output(
+                    user_inputs, _parse_json_object(response.output_text)
+                )
                 validate_forecast_output(
                     prompt_one_output,
                     baseline_rows=user_inputs["Baseline_Forecast_Rows"],
